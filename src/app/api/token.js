@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 
 const appId = 'humaya121';
-const secretKey = 'WYpkNrZfmR%3JuQ4UZQZ7@3wKe4DZaxn';
+const secretKey = 'gw9r7%%8VzV9Mc5kM8jnmZPM8ccW!HY9';
 const apiUrl = 'https://open.iopgps.com/api/auth';
 
 app.post('/api/token', async (req, res) => {
@@ -17,29 +17,51 @@ app.post('/api/token', async (req, res) => {
     const requestData = {
       appid: appId,
       time: timestamp,
-      signature: signature
+      signature: signature.toLowerCase()
     };
 
+    console.log('Request Data:', requestData);
+
     const response = await axios.post(apiUrl, requestData);
+    console.log('WanWay API Response:', response.data);
+
     const { code, accessToken } = response.data;
 
     if (code === 0) {
-      res.json({ token: accessToken });
+      res.json({
+        code: 0,
+        expiresin: 7200000,
+        accessToken: accessToken,
+        token_type: "Bearer"
+      });
     } else {
-      res.status(401).json({ error: 'Authentication failed' });
+      res.status(401).json({
+        code: response.data.code,
+        result: response.data.result
+      });
     }
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error:', error.response ? error.response.data : error.message);
+    res.status(500).json({
+      code: 500,
+      result: 'Internal server error'
+    });
   }
 });
 
 function generateSignature(secretKey, timestamp) {
-  const md5 = crypto.createHash('md5');
-  const hash = md5.update(secretKey).digest('hex');
-  const signature = md5.update(hash + timestamp).digest('hex');
+  const hash = crypto.createHash('md5').update(secretKey).digest('hex');
+  const signature = crypto.createHash('md5').update(hash + timestamp).digest('hex').toLowerCase();
   return signature;
 }
+
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({
+    code: 500,
+    result: 'Internal server error'
+  });
+});
 
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
